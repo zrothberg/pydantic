@@ -625,7 +625,7 @@ def field_singleton_schema(  # noqa: C901 (ignore complexity)
             ref_prefix=ref_prefix,
             known_models=known_models,
         )
-    if field.type_ is Any or type(field.type_) == TypeVar:
+    if field.type_ is Any or field.type_.__class__ == TypeVar:
         if field.parse_json:
             return json_scheme, definitions, nested_models
         else:
@@ -649,7 +649,7 @@ def field_singleton_schema(  # noqa: C901 (ignore complexity)
                 known_models=known_models,
             )
         literal_value = values[0]
-        field_type = type(literal_value)
+        field_type = literal_value.__class__
         f_schema['const'] = literal_value
     if issubclass(field_type, Enum):
         f_schema.update({'enum': [item.value for item in field_type]})
@@ -713,7 +713,7 @@ def encode_default(dft: Any) -> Any:
     if isinstance(dft, (int, float, str)):
         return dft
     elif isinstance(dft, (tuple, list, set)):
-        t = type(dft)
+        t = dft.__class__
         return t(encode_default(v) for v in dft)
     elif isinstance(dft, dict):
         return {encode_default(k): encode_default(v) for k, v in dft.items()}

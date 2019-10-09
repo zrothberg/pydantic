@@ -42,7 +42,7 @@ def truncate(v: Union[str], *, max_len: int = 80) -> str:
     try:
         v = v.__repr__()
     except TypeError:
-        v = type(v).__repr__(v)  # in case v is a type
+        v = v.__class__.__repr__(v)  # in case v is a type
     if len(v) > max_len:
         v = v[: max_len - 1] + '…'
     return v
@@ -167,7 +167,7 @@ class ValueItems:
         elif isinstance(items, set):
             self._type = set
         else:
-            raise TypeError(f'Unexpected type of exclude value {type(items)}')
+            raise TypeError(f'Unexpected type of exclude value {items.__class__}')
 
         if isinstance(value, (list, tuple)):
             items = self._normalize_indexes(items, len(value))

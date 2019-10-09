@@ -278,12 +278,12 @@ class ModelField:
 
     def prepare(self) -> None:
         if self.default is not None and self.type_ is None:
-            self.type_ = type(self.default)
+            self.type_ = self.default.__class__
 
         if self.type_ is None:
             raise errors_.ConfigError(f'unable to infer type for attribute "{self.name}"')
 
-        if type(self.type_) == ForwardRef:
+        if self.type_.__class__ == ForwardRef:
             # self.type_ is currently a ForwardRef and there's nothing we can do now,
             # user will need to call model.update_forward_refs()
             return

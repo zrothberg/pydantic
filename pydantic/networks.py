@@ -144,7 +144,7 @@ class AnyUrl(str):
 
     @classmethod
     def validate(cls, value: Any, field: 'ModelField', config: 'BaseConfig') -> 'AnyUrl':
-        if type(value) == cls:
+        if value.__class__ == cls:
             return value
         value = str_validator(value)
         if cls.strip_whitespace:
@@ -215,7 +215,7 @@ class AnyUrl(str):
 
     def __repr__(self) -> str:
         extra = ' '.join(f'{n}={getattr(self, n)!r}' for n in self.__slots__ if getattr(self, n) is not None)
-        return f'<{type(self).__name__}({super().__repr__()} {extra})>'
+        return f'<{self.__class__.__name__}({super().__repr__()} {extra})>'
 
 
 class AnyHttpUrl(AnyUrl):
