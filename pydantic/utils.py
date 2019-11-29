@@ -3,6 +3,7 @@ import sys
 import warnings
 from functools import wraps
 from importlib import import_module
+from inspect import Signature, signature
 from types import CodeType, FunctionType
 from typing import (
     TYPE_CHECKING,
@@ -143,33 +144,13 @@ def copy_code(code: CodeType, **update: Any) -> CodeType:
     return CodeType(*[update.get(arg, getattr(code, arg)) for arg in CODE_ARGS])
 
 
-def generate_typed_init(
-    current_init: FunctionType,
-    fields: Dict[str, 'ModelField'],
-    defaults: Dict[str, Any],
-    annotations: Dict[str, Any],
-    compiled: bool,
-) -> FunctionType:
+def generate_init_signature(
+    orig_init: FunctionType, fields: Dict[str, 'ModelField'], defaults: Dict[str, Any], annotations: Dict[str, Any]
+) -> Signature:
     """
     Generate typed signature for init
     """
-    if not compiled:
-        # can perform this in python, however in cython this will cause "unknown opcode" on call
-        orig_init = current_init
-        orig_code = orig_init.__code__
-        new_init = FunctionType(
-            orig_code, orig_init.__globals__, closure=orig_init.__closure__, name=orig_init.__name__
-        )
-    else:
-        orig_init = getattr(current_init, '__origin_init__', current_init)
-        orig_code = orig_init.__code__
-
-        @wraps(orig_init)
-        def __init__(*args, **kwargs):  # type: ignore
-            orig_init(*args, **kwargs)
-
-        new_init = __init__  # type: ignore
-        new_init.__origin_init__ = orig_init  # type: ignore
+    orig_code = orig_init.__code__
 
     orig_posonlycount = orig_code.co_posonlyargcount if PY38 else 0  # type: ignore
     orig_allargscount = orig_code.co_argcount + orig_code.co_kwonlyargcount + orig_posonlycount
@@ -195,19 +176,19 @@ def generate_typed_init(
         closure=orig_init.__closure__ or () if PY38 else (),
     )
 
-    doc = orig_init.__doc__ or ''
-    caption = '\n(signature auto generated from model fields)'
-    if caption not in doc:
-        doc += caption
+    fake_init.__defaults__ = orig_init.__defaults__
+    fake_init.__kwdefaults__ = {**(orig_init.__kwdefaults__ or {}), **defaults}
+    fake_init.__annotations__ = {**orig_init.__annotations__, **annotations}
 
-    fake_init.__doc__ = new_init.__doc__ = doc
-    fake_init.__defaults__ = new_init.__defaults__ = orig_init.__defaults__
-    fake_init.__kwdefaults__ = new_init.__kwdefaults__ = {**(orig_init.__kwdefaults__ or {}), **defaults}
-    fake_init.__annotations__ = new_init.__annotations__ = {**orig_init.__annotations__, **annotations}
+    return signature(fake_init)
 
-    new_init.__wrapped__ = fake_init  # type: ignore
-    new_init.__signature__ = inspect.signature(fake_init)  # type: ignore
-    return new_init
+
+def generate_init_docstring(current_init: FunctionType) -> str:
+    docstring = current_init.__doc__ or ''
+    caption = '\n        (signature auto generated from model fields)'
+    if caption not in docstring:
+        docstring += caption
+    return docstring
 
 
 class PyObjectStr(str):

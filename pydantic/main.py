@@ -18,7 +18,15 @@ from .parse import Protocol, load_file, load_str_bytes
 from .schema import model_schema
 from .types import PyObject, StrBytes
 from .typing import AnyCallable, AnyType, ForwardRef, is_classvar, resolve_annotations, update_field_forward_refs
-from .utils import GetterDict, Representation, ValueItems, generate_typed_init, lenient_issubclass, validate_field_name
+from .utils import (
+    GetterDict,
+    Representation,
+    ValueItems,
+    generate_init_docstring,
+    generate_init_signature,
+    lenient_issubclass,
+    validate_field_name,
+)
 
 if TYPE_CHECKING:
     from .class_validators import ValidatorListDict
@@ -237,6 +245,34 @@ class ModelMetaclass(ABCMeta):
         else:
             json_encoder = pydantic_encoder
         pre_rv_new, post_rv_new = extract_root_validators(namespace)
+
+        # debug(namespace)
+        if '__init__' not in namespace:
+
+            def init_function(__pydantic_self__, **data: Any) -> None:
+                """
+                Create a new model by parsing and validating input data from keyword arguments
+
+                :raises ValidationError if the input data cannot be parsed to for a valid model.
+                """
+                # Uses something other than `self` the first arg to allow "self" as a settable attribute
+                if TYPE_CHECKING:
+                    __pydantic_self__.__dict__: Dict[str, Any] = {}
+                    __pydantic_self__.__fields_set__: 'SetStr' = set()
+                values, fields_set, validation_error = validate_model(__pydantic_self__.__class__, data)
+                if validation_error:
+                    raise validation_error
+                object.__setattr__(__pydantic_self__, '__dict__', values)
+                object.__setattr__(__pydantic_self__, '__fields_set__', fields_set)
+
+            init_function.__name__ = '__init__'
+            parent_init = bases[0].__init__
+            init_function.__signature__ = generate_init_signature(
+                parent_init, fields, fields_defaults, fields_annotations
+            )
+            init_function.__doc__ = generate_init_docstring(parent_init)
+            namespace['__init__'] = init_function
+
         new_namespace = {
             '__config__': config,
             '__fields__': fields,
@@ -249,10 +285,11 @@ class ModelMetaclass(ABCMeta):
             '__custom_root_type__': _custom_root_type,
             **{n: v for n, v in namespace.items() if n not in fields},
         }
-
-        cls = super().__new__(mcs, name, bases, new_namespace, **kwargs)
-        cls.__init__ = generate_typed_init(cls.__init__, fields, fields_defaults, fields_annotations, compiled)
-        return cls
+        return super().__new__(mcs, name, bases, new_namespace, **kwargs)
+        # cls = super().__new__(mcs, name, bases, new_namespace, **kwargs)
+        # cls.__init__.__signature__ = generate_init_signature(cls.__init__, fields, fields_defaults, fields_annotations)
+        # cls.__init__.__doc__ = generate_init_docstring(cls.__init__)
+        # return cls
 
 
 class BaseModel(metaclass=ModelMetaclass):

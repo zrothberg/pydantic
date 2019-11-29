@@ -15,6 +15,11 @@ def test_init_signature():
         a: float
         b: int = 10
 
+    # creating another model should not break the signature of Model
+    class SecondModel(BaseModel):
+        c: str
+        d: int = 20
+
     assert BaseModel.__init__ is not Model.__init__
     sig = signature(Model.__init__)
     assert sig != signature(BaseModel.__init__)
@@ -61,7 +66,7 @@ def test_custom_init_signature():
 
     expected_signature = "(self, id: int = 1, bar=2, *, baz: Any, name: str = 'John Doe', **data)"
     assert str(sig).replace(' ', '') == expected_signature.replace(' ', '')
-    assert MyModel.__init__.__doc__ == '\n(signature auto generated from model fields)'
+    assert MyModel.__init__.__doc__ == '\n        (signature auto generated from model fields)'
     assert MyModel.__init__.__name__ == '__init__'
     assert MyModel.__init__.__module__ == test_custom_init_signature.__module__
 
@@ -95,5 +100,5 @@ def test_original_init_not_compiled():
     class Model(BaseModel):
         id: int
 
-    assert Model.__init__ is not BaseModel.__init__
+    assert Model.__init__ is BaseModel.__init__
     assert Model.__init__.__code__ == BaseModel.__init__.__code__
