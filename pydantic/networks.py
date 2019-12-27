@@ -12,7 +12,7 @@ from ipaddress import (
 from typing import TYPE_CHECKING, Any, Dict, Generator, Optional, Pattern, Set, Tuple, Type, Union, cast, no_type_check
 
 from . import errors
-from .utils import Representation, update_not_none
+from .utils import LazyRegex, Representation, update_not_none
 from .validators import constr_length_validator, str_validator
 
 if TYPE_CHECKING:
@@ -43,30 +43,25 @@ __all__ = [
 ]
 
 
-_url_regex_cache = None
 _ascii_domain_regex_cache = None
 _int_domain_regex_cache = None
 _domain_ending = r'(?P<tld>\.[a-z]{2,63})?\.?'
 
 
-def url_regex() -> Pattern[str]:
-    global _url_regex_cache
-    if _url_regex_cache is None:
-        _url_regex_cache = re.compile(
-            r'(?:(?P<scheme>[a-z0-9]+?)://)?'  # scheme
-            r'(?:(?P<user>[^\s:]+)(?::(?P<password>\S*))?@)?'  # user info
-            r'(?:'
-            r'(?P<ipv4>(?:\d{1,3}\.){3}\d{1,3})|'  # ipv4
-            r'(?P<ipv6>\[[A-F0-9]*:[A-F0-9:]+\])|'  # ipv6
-            r'(?P<domain>[^\s/:?#]+)'  # domain, validation occurs later
-            r')?'
-            r'(?::(?P<port>\d+))?'  # port
-            r'(?P<path>/[^\s?]*)?'  # path
-            r'(?:\?(?P<query>[^\s#]+))?'  # query
-            r'(?:#(?P<fragment>\S+))?',  # fragment
-            re.IGNORECASE,
-        )
-    return _url_regex_cache
+url_regex = LazyRegex(
+    r'(?:(?P<scheme>[a-z0-9]+?)://)?'  # scheme
+    r'(?:(?P<user>[^\s:]+)(?::(?P<password>\S*))?@)?'  # user info
+    r'(?:'
+    r'(?P<ipv4>(?:\d{1,3}\.){3}\d{1,3})|'  # ipv4
+    r'(?P<ipv6>\[[A-F0-9]*:[A-F0-9:]+\])|'  # ipv6
+    r'(?P<domain>[^\s/:?#]+)'  # domain, validation occurs later
+    r')?'
+    r'(?::(?P<port>\d+))?'  # port
+    r'(?P<path>/[^\s?]*)?'  # path
+    r'(?:\?(?P<query>[^\s#]+))?'  # query
+    r'(?:#(?P<fragment>\S+))?',  # fragment
+    re.IGNORECASE,
+)
 
 
 def ascii_domain_regex() -> Pattern[str]:
@@ -174,7 +169,7 @@ class AnyUrl(str):
             value = value.strip()
         url: str = cast(str, constr_length_validator(value, field, config))
 
-        m = url_regex().match(url)
+        m = url_regex.match(url)
         # the regex should always match, if it doesn't please report with details of the URL tried
         assert m, 'URL regex failed unexpectedly'
 

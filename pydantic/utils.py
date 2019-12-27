@@ -1,4 +1,5 @@
 import inspect
+import re
 import warnings
 from pathlib import Path
 from typing import (
@@ -10,7 +11,9 @@ from typing import (
     Generator,
     Iterator,
     List,
+    Match,
     Optional,
+    Pattern,
     Set,
     Tuple,
     Type,
@@ -333,6 +336,30 @@ class ValueItems(Representation):
 
     def __repr_args__(self) -> 'ReprArgs':
         return [(None, self._items)]
+
+
+class LazyRegex:
+    """
+    Lazy wrapper around re.compile
+    """
+
+    __slots__ = '_s', '_flags', '_pattern'
+
+    def __init__(self, s: str, *flags: int):
+        self._s = s
+        self._flags = flags
+        self._pattern: Optional[Pattern[str]] = None
+
+    def _get_pattern(self) -> Pattern[str]:
+        if self._pattern is None:
+            self._pattern = re.compile(self._s, *self._flags)
+        return self._pattern
+
+    def match(self, string: str) -> Optional[Match[str]]:
+        return self._get_pattern().match(string)
+
+    def fullmatch(self, string: str) -> Optional[Match[str]]:
+        return self._get_pattern().fullmatch(string)
 
 
 def version_info() -> str:
