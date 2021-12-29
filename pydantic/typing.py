@@ -457,7 +457,7 @@ def update_field_forward_refs(field: 'ModelField', globalns: Any, localns: Any) 
 
 
 def update_model_forward_refs(
-    model: Type[Any],
+    model: Type['Any'],
     fields: Iterable['ModelField'],
     localns: 'DictStrAny',
     exc_to_suppress: Tuple[Type[BaseException], ...] = (),
@@ -479,11 +479,11 @@ def update_model_forward_refs(
             pass
 
     try:
-        model_config:dict = model.__config__.json_encoders.copy()
+        model_config: dict[str, type] = model.__config__.json_encoders.copy()
         print(type(model_config))
         print(model_config)
-        for key,value in model_config.items():
-            print(key,value)
+        for key, value in model_config.items():
+            print(key, value)
             if type(key) is str:
                 model.__config__.json_encoders.pop(key)
                 model.__config__.json_encoders[globalns[key]] = value
