@@ -478,6 +478,20 @@ def update_model_forward_refs(
         except exc_to_suppress:
             pass
 
+    try:
+        model_config:dict = model.__config__.json_encoders.copy()
+        print(type(model_config))
+        print(model_config)
+        for key,value in model_config.items():
+            print(key,value)
+            if type(key) is str:
+                model.__config__.json_encoders.pop(key)
+                model.__config__.json_encoders[globalns[key]] = value
+
+        print(model)
+    except Exception as e:
+        print(e)
+
 
 def get_class(type_: Type[Any]) -> Union[None, bool, Type[Any]]:
     """

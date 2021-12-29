@@ -99,14 +99,12 @@ def pydantic_encoder(obj: Any) -> Any:
 
 def custom_pydantic_encoder(type_encoders: Dict[Any, Callable[[Type[Any]], Any]], obj: Any) -> Any:
     # Check the class type and its superclasses for a matching encoder
+    print(type_encoders)
     for base in obj.__class__.__mro__[:-1]:
         try:
             encoder = type_encoders[base]
         except KeyError:
-            try:
-                encoder = type_encoders[base.__name__]
-            except KeyError:
-                continue
+            continue
 
         return encoder(obj)
     else:  # We have exited the for loop without finding a suitable encoder
